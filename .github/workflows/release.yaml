@@ -7,12 +7,19 @@ jobs:
   release-linux-amd64:
     name: release linux/amd64
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux,windows]
+        goarch: [amd64, arm64]
+        exclude:
+          - goarch: arm64
+            goos: windows
     steps:
     - uses: actions/checkout@v2
     - uses: wangyoucao577/go-release-action@v1.22
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        goos: [linux]
-        goarch: [amd64, arm64]
+        goos: ${{ matrix.goos }}
+        goarch: ${{ matrix.goarch }}
         binary_name: overlaytest
         sha256sum: true
