@@ -12,7 +12,7 @@ jobs:
     - uses: wangyoucao577/go-release-action@v1.22
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        goos: linux
+        goos: [linux]
         goarch: [amd64, arm64]
         binary_name: overlaytest
         sha256sum: true
