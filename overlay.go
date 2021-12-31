@@ -29,7 +29,7 @@ import (
 func main() {
 	// install namespace and app name
 	var kubeconfig *string
-	namespace := "gnuu2"
+	namespace := "overlay"
 	app := "overlaytest"
 
 	// load kube-config file
