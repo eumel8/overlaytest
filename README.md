@@ -7,7 +7,7 @@ This is a [Go client](https://github.com/kubernetes/client-go) of the [Overlay N
 ## Requirements
 
 * kube-config with connection to a working Kubernetes Cluster
-* a namespace `overlay` where the application will deploy
+* access `kube-system` where the application will deploy (needs priviledged mode for network ping command)
 
 ## Usage
 

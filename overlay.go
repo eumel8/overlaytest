@@ -29,8 +29,13 @@ import (
 func main() {
 	// install namespace and app name
 	var kubeconfig *string
-	namespace := "overlay"
+	namespace := "kube-system"
 	app := "overlaytest"
+	var graceperiod = int64(1)
+	var user = int64(1000)
+	var privledged = bool(true)
+	var readonly = bool(true)
+	image := "mtr.external.otc.telekomcloud.com/mcsps/swiss-army-knife:latest"
 
 	// load kube-config file
 	if home := homedir.HomeDir(); home != "" {
@@ -80,9 +85,20 @@ func main() {
 							Args:            []string{"tail -f /dev/null"},
 							Command:         []string{"sh", "-c"},
 							Name:            app,
-							Image:           "mtr.external.otc.telekomcloud.com/mcsps/swiss-army-knife:latest",
-							ImagePullPolicy: "Always",
+							Image:           image,
+							ImagePullPolicy: "IfNotPresent",
+							SecurityContext: &core.SecurityContext{
+								AllowPrivilegeEscalation: &privledged,
+								Privileged:               &privledged,
+								ReadOnlyRootFilesystem:   &readonly,
+								RunAsGroup:               &user,
+								RunAsUser:                &user,
+							},
 						},
+					},
+					TerminationGracePeriodSeconds: &graceperiod,
+					SecurityContext: &core.PodSecurityContext{
+						FSGroup: &user,
 					},
 				},
 			},
@@ -170,7 +186,7 @@ func main() {
 				Tty:    false,
 			})
 			if err != nil {
-				fmt.Println(upod.Spec.NodeName, " can NOT rach ", pod.Spec.NodeName)
+				fmt.Println(upod.Spec.NodeName, " can NOT reach ", pod.Spec.NodeName)
 			} else {
 				fmt.Println(upod.Spec.NodeName, " can reach ", pod.Spec.NodeName)
 			}
