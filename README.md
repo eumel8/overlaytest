@@ -7,11 +7,18 @@ This is a [Go client](https://github.com/kubernetes/client-go) of the [Overlay N
 ## Requirements
 
 * kube-config with connection to a working Kubernetes Cluster
-* access `kube-system` where the application will deploy (needs priviledged mode for network ping command)
+* access `kube-system` namespace where the application will deploy (needs priviledged mode for network ping command)
 
 ## Usage
 
 Download artifact from [Release Page](https://github.com/eumel8/overlaytest/releases) and execute.
+
+## Docker Image
+
+* [source](https://github.com/mcsps/swiss-army-knife/tree/mcsps)
+
+* [repo](https://mtr.external.otc.telekomcloud.com/repository/mcsps/swiss-army-knife?tab=tags)
+
 
 ## Credits
 
