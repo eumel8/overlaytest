@@ -39,11 +39,14 @@ func main() {
 	image := "mtr.external.otc.telekomcloud.com/mcsps/swiss-army-knife:latest"
 
 	// load kube-config file
-	if home := homedir.HomeDir(); home != "" {
+	if os.Getenv("KUBECONFIG") != "" {
+		kubeconfig = flag.String("kubeconfig", os.Getenv("KUBECONFIG"), "environment variable of KUBECONFIG")
+	} else if home := homedir.HomeDir(); home != "" {
 		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
 	} else {
 		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
 	}
+
 	flag.Parse()
 
 	// use the current context in kubeconfig
