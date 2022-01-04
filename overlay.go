@@ -21,6 +21,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/util/homedir"
+	"net"
 	"os"
 	"path/filepath"
 	"time"
@@ -156,8 +157,9 @@ func main() {
 				panic(err.Error())
 			}
 
-			if podi.Status.PodIP != "" {
-				fmt.Println(podi.ObjectMeta.Name, "ready")
+			if net.ParseIP(podi.Status.PodIP) != nil {
+				fmt.Println(podi.ObjectMeta.Name, "ready", podi.Status.PodIP)
+				// fmt.Println(podi.ObjectMeta.Name, "ready")
 				break
 			}
 		}
@@ -166,6 +168,8 @@ func main() {
 
 	// loop the pod list for each node for the network test
 	fmt.Println("=> Start network overlay test\n")
+	// refresh pod object list
+	pods, err = clientset.CoreV1().Pods(namespace).List(context.TODO(), meta.ListOptions{LabelSelector: "app=overlaytest"})
 	for _, upod := range pods.Items {
 		for _, pod := range pods.Items {
 			// fmt.Println("Podname: ", pod.ObjectMeta.Name)
