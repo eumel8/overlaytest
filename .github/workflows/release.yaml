@@ -22,4 +22,5 @@ jobs:
         goos: ${{ matrix.goos }}
         goarch: ${{ matrix.goarch }}
         binary_name: overlaytest
+        retry: 10
         sha256sum: true
