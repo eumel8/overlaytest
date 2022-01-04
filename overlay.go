@@ -149,9 +149,15 @@ func main() {
 	// wait here again if all PODs become an ip-address
 	fmt.Println("checking pod network...")
 	for _, pod := range pods.Items {
+		podi, err := clientset.CoreV1().Pods(namespace).Get(context.TODO(), pod.ObjectMeta.Name, meta.GetOptions{})
+
+		if err != nil {
+			panic(err.Error())
+		}
+
 		for {
-			if pod.Status.PodIP != "" {
-				fmt.Println(pod.ObjectMeta.Name, "ready")
+			if podi.Status.PodIP != "" {
+				fmt.Println(podi.ObjectMeta.Name, "ready")
 				break
 			}
 		}
