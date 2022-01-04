@@ -97,6 +97,9 @@ func main() {
 						},
 					},
 					TerminationGracePeriodSeconds: &graceperiod,
+					Tolerations: []core.Toleration{{
+						Operator: "Exists",
+					}},
 					SecurityContext: &core.PodSecurityContext{
 						FSGroup: &user,
 					},
