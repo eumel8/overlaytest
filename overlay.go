@@ -27,6 +27,8 @@ import (
 	"time"
 )
 
+const appversion = "0.0.7"
+
 func main() {
 	// install namespace and app name
 	var kubeconfig *string
@@ -46,8 +48,15 @@ func main() {
 	} else {
 		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
 	}
+	version := flag.Bool("version", false, "app version")
 
 	flag.Parse()
+
+	// print app version and exit
+	if *version {
+		fmt.Println("version", appversion)
+		os.Exit(0)
+	}
 
 	// use the current context in kubeconfig
 	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
