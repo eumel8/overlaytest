@@ -27,7 +27,7 @@ import (
 	"time"
 )
 
-const appversion = "0.0.7"
+const appversion = "0.0.8"
 
 func main() {
 	// install namespace and app name
@@ -49,6 +49,7 @@ func main() {
 		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
 	}
 	version := flag.Bool("version", false, "app version")
+	reuse := flag.Bool("reuse", false, "reuse existing deployment")
 
 	flag.Parse()
 
@@ -121,35 +122,37 @@ func main() {
 		},
 	}
 
-	// create DaemonSet, delete it if exists
-	fmt.Println("Creating daemonset...")
-	result, err := daemonsetsClient.Create(context.TODO(), daemonset, meta.CreateOptions{})
-	if errors.IsAlreadyExists(err) {
-		fmt.Println("daemonset already exists, deleting ... & exit")
-		deletePolicy := meta.DeletePropagationForeground
-		if err := daemonsetsClient.Delete(context.TODO(), app, meta.DeleteOptions{
-			PropagationPolicy: &deletePolicy,
-		}); err != nil {
+	if *reuse != true {
+		// create DaemonSet, delete it if exists
+		fmt.Println("Creating daemonset...")
+		result, err := daemonsetsClient.Create(context.TODO(), daemonset, meta.CreateOptions{})
+		if errors.IsAlreadyExists(err) {
+			fmt.Println("daemonset already exists, deleting ... & exit")
+			deletePolicy := meta.DeletePropagationForeground
+			if err := daemonsetsClient.Delete(context.TODO(), app, meta.DeleteOptions{
+				PropagationPolicy: &deletePolicy,
+			}); err != nil {
+				panic(err)
+			}
+			os.Exit(1)
+		} else if err != nil {
 			panic(err)
 		}
-		os.Exit(1)
-	} else if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Created daemonset %q.\n", result.GetObjectMeta().GetName())
+		fmt.Printf("Created daemonset %q.\n", result.GetObjectMeta().GetName())
 
-	// wait here if all PODs are ready
-	for {
-		obj, err := clientset.AppsV1().DaemonSets(namespace).Get(context.TODO(), "overlaytest", meta.GetOptions{})
-		if err != nil {
-			fmt.Println("Error getting daemonset: %v", err)
-			panic(err.Error())
+		// wait here if all PODs are ready
+		for {
+			obj, err := clientset.AppsV1().DaemonSets(namespace).Get(context.TODO(), "overlaytest", meta.GetOptions{})
+			if err != nil {
+				fmt.Println("Error getting daemonset: %v", err)
+				panic(err.Error())
+			}
+			if obj.Status.NumberReady != 0 {
+				fmt.Println("all pods ready")
+				break
+			}
+			time.Sleep(2 * time.Second)
 		}
-		if obj.Status.NumberReady != 0 {
-			fmt.Println("all pods ready")
-			break
-		}
-		time.Sleep(2 * time.Second)
 	}
 
 	// load list of PODs
