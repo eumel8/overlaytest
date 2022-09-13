@@ -38,7 +38,7 @@ func main() {
 	var user = int64(1000)
 	var privledged = bool(true)
 	var readonly = bool(true)
-	image := "mtr.external.otc.telekomcloud.com/mcsps/swiss-army-knife:latest"
+	image := "mtr.devops.telekom.de/mcsps/swiss-army-knife:latest"
 
 	// load kube-config file
 	if os.Getenv("KUBECONFIG") != "" {
