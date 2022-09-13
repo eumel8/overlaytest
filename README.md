@@ -17,7 +17,7 @@ Download artifact from [Release Page](https://github.com/eumel8/overlaytest/rele
 
 * [source](https://github.com/mcsps/swiss-army-knife/tree/mcsps)
 
-* [repo](https://mtr.external.otc.telekomcloud.com/repository/mcsps/swiss-army-knife?tab=tags)
+* [repo](https://mtr.devops.telekom.de/repository/mcsps/swiss-army-knife?tab=tags)
 
 
 ## Credits
