@@ -27,7 +27,7 @@ import (
 	"time"
 )
 
-const appversion = "1.0.1"
+const appversion = "1.0.4"
 
 func main() {
 	// install namespace and app name
