@@ -3,7 +3,7 @@ on:
   push:
 
 jobs:
-  helm:
+  end2end:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Repo
@@ -22,7 +22,7 @@ jobs:
         kubectl get nodes
     - name: Check overlay
       run: |
-        export KUBECONFIG=/var/lib/rancher/k3s/server/cred/admin.kubeconfig
+        # export KUBECONFIG=/var/lib/rancher/k3s/server/cred/admin.kubeconfig
         go mod tidy
         go run overlay.go --version
         go run overlay.go
