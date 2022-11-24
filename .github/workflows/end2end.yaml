@@ -1,8 +1,7 @@
 name: End2End Testing
 on:
   push:
-    paths:
-      - chart/**
+
 jobs:
   helm:
     runs-on: ubuntu-latest
