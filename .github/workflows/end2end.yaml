@@ -24,6 +24,6 @@ jobs:
       run: |
         go mod tidy
         kubectl get nodes
+        go run overlay.go --help
         go run overlay.go --version
-        go run overlay.go
         go run overlay.go
