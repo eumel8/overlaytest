@@ -32,5 +32,5 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: eumel8/overlaytest
     - name: Generate coverage badge
-      run: go tool cover -func coverage.out
+      run: go tool cover -func coverage.txt
 
