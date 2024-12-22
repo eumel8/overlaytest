@@ -12,6 +12,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net"
+	"os"
+	"path/filepath"
+	"time"
+
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -21,10 +26,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/util/homedir"
-	"net"
-	"os"
-	"path/filepath"
-	"time"
 )
 
 const appversion = "1.0.5"
@@ -75,7 +76,7 @@ func main() {
 
 	// prepare the DaemonSet resource
 	daemonsetsClient := clientset.AppsV1().DaemonSets(namespace)
-	fmt.Println("Welcome to the overlaytest.\n\n")
+	fmt.Println("Welcome to the overlaytest.")
 
 	daemonset := &apps.DaemonSet{
 		ObjectMeta: meta.ObjectMeta{
@@ -144,7 +145,7 @@ func main() {
 		for {
 			obj, err := clientset.AppsV1().DaemonSets(namespace).Get(context.TODO(), "overlaytest", meta.GetOptions{})
 			if err != nil {
-				fmt.Println("Error getting daemonset: %v", err)
+				fmt.Printf("Error getting daemonset: %v\n", err)
 				panic(err.Error())
 			}
 			if obj.Status.NumberReady != 0 {
@@ -179,10 +180,10 @@ func main() {
 			}
 		}
 	}
-	fmt.Println("all pods have network\n")
+	fmt.Println("all pods have network")
 
 	// loop the pod list for each node for the network test
-	fmt.Println("=> Start network overlay test\n")
+	fmt.Println("=> Start network overlay test")
 	// refresh pod object list
 	pods, err = clientset.CoreV1().Pods(namespace).List(context.TODO(), meta.ListOptions{LabelSelector: "app=overlaytest"})
 	for _, upod := range pods.Items {
@@ -204,7 +205,7 @@ func main() {
 
 			exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
 			if err != nil {
-				fmt.Println("error while creating Executor: %v", err)
+				fmt.Printf("error while creating Executor: %v\n", err)
 			}
 
 			err = exec.Stream(remotecommand.StreamOptions{
@@ -221,6 +222,6 @@ func main() {
 
 		}
 	}
-	fmt.Println("=> End network overlay test\n")
-	fmt.Println("Call me again to remove installed cluster resources\n")
+	fmt.Println("=> End network overlay test")
+	fmt.Println("Call me again to remove installed cluster resources")
 }
