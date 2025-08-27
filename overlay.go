@@ -75,7 +75,7 @@ func main() {
 
 	// prepare the DaemonSet resource
 	daemonsetsClient := clientset.AppsV1().DaemonSets(namespace)
-	fmt.Println("Welcome to the overlaytest.\n\n")
+	fmt.Printf("Welcome to the overlaytest.\n\n")
 
 	daemonset := &apps.DaemonSet{
 		ObjectMeta: meta.ObjectMeta{
@@ -144,11 +144,11 @@ func main() {
 		for {
 			obj, err := clientset.AppsV1().DaemonSets(namespace).Get(context.TODO(), "overlaytest", meta.GetOptions{})
 			if err != nil {
-				fmt.Println("Error getting daemonset: %v", err)
+				fmt.Printf("Error getting daemonset: %v", err)
 				panic(err.Error())
 			}
 			if obj.Status.NumberReady != 0 {
-				fmt.Println("all pods ready")
+				fmt.Printf("all pods ready\n")
 				break
 			}
 			time.Sleep(2 * time.Second)
@@ -163,7 +163,7 @@ func main() {
 	fmt.Printf("There are %d nodes in the cluster\n", len(pods.Items))
 
 	// wait here again if all PODs become an ip-address
-	fmt.Println("checking pod network...")
+	fmt.Printf("checking pod network...\n")
 	for _, pod := range pods.Items {
 		for {
 			podi, err := clientset.CoreV1().Pods(namespace).Get(context.TODO(), pod.ObjectMeta.Name, meta.GetOptions{})
@@ -179,10 +179,10 @@ func main() {
 			}
 		}
 	}
-	fmt.Println("all pods have network\n")
+	fmt.Printf("all pods have network\n")
 
 	// loop the pod list for each node for the network test
-	fmt.Println("=> Start network overlay test\n")
+	fmt.Printf("=> Start network overlay test\n")
 	// refresh pod object list
 	pods, err = clientset.CoreV1().Pods(namespace).List(context.TODO(), meta.ListOptions{LabelSelector: "app=overlaytest"})
 	for _, upod := range pods.Items {
@@ -204,7 +204,7 @@ func main() {
 
 			exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
 			if err != nil {
-				fmt.Println("error while creating Executor: %v", err)
+				fmt.Printf("error while creating Executor: %v\n", err)
 			}
 
 			err = exec.Stream(remotecommand.StreamOptions{
@@ -214,13 +214,13 @@ func main() {
 				Tty:    false,
 			})
 			if err != nil {
-				fmt.Println(upod.Spec.NodeName, " can NOT reach ", pod.Spec.NodeName)
+				fmt.Printf(upod.Spec.NodeName, " can NOT reach ", pod.Spec.NodeName,"\n")
 			} else {
-				fmt.Println(upod.Spec.NodeName, " can reach ", pod.Spec.NodeName)
+				fmt.Printf(upod.Spec.NodeName, " can reach ", pod.Spec.NodeName,"\n")
 			}
 
 		}
 	}
-	fmt.Println("=> End network overlay test\n")
-	fmt.Println("Call me again to remove installed cluster resources\n")
+	fmt.Printf("=> End network overlay test\n")
+	fmt.Printf("Call me again to remove installed cluster resources\n")
 }
