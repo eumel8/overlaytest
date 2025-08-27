@@ -2,7 +2,7 @@ name: End-to-End Tests with Kind
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feat/e2e ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:

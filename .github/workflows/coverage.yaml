@@ -5,7 +5,6 @@ on:
     branches:
       # It's important that the action also runs on merge to main
       - main
-      - feat/e2e
 jobs:
   test:
     runs-on: ubuntu-latest

@@ -446,3 +446,355 @@ func TestConstants(t *testing.T) {
 		}
 	})
 }
+
+func TestGetKubeconfigPath(t *testing.T) {
+	oldKubeconfig := os.Getenv("KUBECONFIG")
+	defer os.Setenv("KUBECONFIG", oldKubeconfig)
+
+	t.Run("KUBECONFIG environment variable set", func(t *testing.T) {
+		expected := "/custom/kubeconfig"
+		os.Setenv("KUBECONFIG", expected)
+		
+		result := getKubeconfigPath()
+		if result != expected {
+			t.Errorf("Expected %s, got %s", expected, result)
+		}
+	})
+
+	t.Run("No KUBECONFIG but home directory available", func(t *testing.T) {
+		os.Setenv("KUBECONFIG", "")
+		home := homedir.HomeDir()
+		if home == "" {
+			t.Skip("No home directory available")
+		}
+		
+		expected := filepath.Join(home, ".kube", "config")
+		result := getKubeconfigPath()
+		if result != expected {
+			t.Errorf("Expected %s, got %s", expected, result)
+		}
+	})
+}
+
+func TestValidatePodIPEdgeCases(t *testing.T) {
+	tests := []struct {
+		name     string
+		podIP    string
+		expected bool
+	}{
+		{
+			name:     "Zero IP",
+			podIP:    "0.0.0.0",
+			expected: true,
+		},
+		{
+			name:     "Broadcast IP",
+			podIP:    "255.255.255.255",
+			expected: true,
+		},
+		{
+			name:     "Multicast IP",
+			podIP:    "224.0.0.1",
+			expected: true,
+		},
+		{
+			name:     "Private class A",
+			podIP:    "10.0.0.1",
+			expected: true,
+		},
+		{
+			name:     "Private class B",
+			podIP:    "172.16.0.1",
+			expected: true,
+		},
+		{
+			name:     "Private class C",
+			podIP:    "192.168.1.1",
+			expected: true,
+		},
+		{
+			name:     "Link-local",
+			podIP:    "169.254.1.1",
+			expected: true,
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := validatePodIP(tt.podIP)
+			if result != tt.expected {
+				t.Errorf("Expected %t for IP %s, got %t", tt.expected, tt.podIP, result)
+			}
+		})
+	}
+}
+
+func TestCreatePingCommandEdgeCases(t *testing.T) {
+	tests := []struct {
+		name     string
+		targetIP string
+	}{
+		{
+			name:     "Empty IP",
+			targetIP: "",
+		},
+		{
+			name:     "Special characters",
+			targetIP: "10.0.0.1!@#",
+		},
+		{
+			name:     "Very long IP string",
+			targetIP: "1234567890123456789012345678901234567890",
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := createPingCommand(tt.targetIP)
+			
+			if len(result) != 3 {
+				t.Errorf("Expected 3 command parts, got %d", len(result))
+			}
+			
+			if result[0] != "sh" {
+				t.Errorf("Expected first part to be 'sh', got %s", result[0])
+			}
+			
+			if result[1] != "-c" {
+				t.Errorf("Expected second part to be '-c', got %s", result[1])
+			}
+			
+			expectedThirdPart := "ping -c 2 " + tt.targetIP + " > /dev/null 2>&1"
+			if result[2] != expectedThirdPart {
+				t.Errorf("Expected third part to be %s, got %s", expectedThirdPart, result[2])
+			}
+		})
+	}
+}
+
+func TestDaemonSetSpecConsistency(t *testing.T) {
+	namespace1 := "test-ns-1"
+	app1 := "test-app-1"
+	image1 := "test-image-1"
+	
+	namespace2 := "test-ns-2"
+	app2 := "test-app-2"
+	image2 := "test-image-2"
+	
+	ds1 := createDaemonSetSpec(namespace1, app1, image1)
+	ds2 := createDaemonSetSpec(namespace2, app2, image2)
+	
+	t.Run("Different inputs produce different outputs", func(t *testing.T) {
+		if ds1.ObjectMeta.Name == ds2.ObjectMeta.Name {
+			t.Error("Expected different DaemonSet names")
+		}
+		
+		if ds1.Spec.Template.Spec.Containers[0].Image == ds2.Spec.Template.Spec.Containers[0].Image {
+			t.Error("Expected different container images")
+		}
+	})
+	
+	t.Run("Same structure maintained", func(t *testing.T) {
+		if len(ds1.Spec.Template.Spec.Containers) != len(ds2.Spec.Template.Spec.Containers) {
+			t.Error("Expected same number of containers")
+		}
+		
+		if len(ds1.Spec.Template.Spec.Tolerations) != len(ds2.Spec.Template.Spec.Tolerations) {
+			t.Error("Expected same number of tolerations")
+		}
+	})
+}
+
+func TestCreateDaemonSetSpec(t *testing.T) {
+	namespace := "test-namespace"
+	app := "test-app"
+	image := "test-image:latest"
+	
+	daemonset := createDaemonSetSpec(namespace, app, image)
+	
+	t.Run("Metadata", func(t *testing.T) {
+		if daemonset.ObjectMeta.Name != app {
+			t.Errorf("Expected name %s, got %s", app, daemonset.ObjectMeta.Name)
+		}
+	})
+	
+	t.Run("Selector", func(t *testing.T) {
+		if daemonset.Spec.Selector.MatchLabels["app"] != app {
+			t.Errorf("Expected selector app label %s, got %s", app, daemonset.Spec.Selector.MatchLabels["app"])
+		}
+	})
+	
+	t.Run("Template labels", func(t *testing.T) {
+		if daemonset.Spec.Template.ObjectMeta.Labels["app"] != app {
+			t.Errorf("Expected template app label %s, got %s", app, daemonset.Spec.Template.ObjectMeta.Labels["app"])
+		}
+	})
+	
+	t.Run("Container spec", func(t *testing.T) {
+		container := daemonset.Spec.Template.Spec.Containers[0]
+		
+		if container.Name != app {
+			t.Errorf("Expected container name %s, got %s", app, container.Name)
+		}
+		
+		if container.Image != image {
+			t.Errorf("Expected container image %s, got %s", image, container.Image)
+		}
+		
+		if container.ImagePullPolicy != "IfNotPresent" {
+			t.Errorf("Expected ImagePullPolicy IfNotPresent, got %s", container.ImagePullPolicy)
+		}
+		
+		expectedArgs := []string{"tail -f /dev/null"}
+		if len(container.Args) != 1 || container.Args[0] != expectedArgs[0] {
+			t.Errorf("Expected args %v, got %v", expectedArgs, container.Args)
+		}
+		
+		expectedCommand := []string{"sh", "-c"}
+		if len(container.Command) != 2 || container.Command[0] != expectedCommand[0] || container.Command[1] != expectedCommand[1] {
+			t.Errorf("Expected command %v, got %v", expectedCommand, container.Command)
+		}
+	})
+	
+	t.Run("Security context", func(t *testing.T) {
+		container := daemonset.Spec.Template.Spec.Containers[0]
+		secCtx := container.SecurityContext
+		
+		expectedUser := int64(1000)
+		expectedPrivileged := true
+		expectedReadonly := true
+		
+		if secCtx.RunAsUser == nil || *secCtx.RunAsUser != expectedUser {
+			t.Errorf("Expected RunAsUser %d, got %v", expectedUser, secCtx.RunAsUser)
+		}
+		
+		if secCtx.RunAsGroup == nil || *secCtx.RunAsGroup != expectedUser {
+			t.Errorf("Expected RunAsGroup %d, got %v", expectedUser, secCtx.RunAsGroup)
+		}
+		
+		if secCtx.Privileged == nil || *secCtx.Privileged != expectedPrivileged {
+			t.Errorf("Expected Privileged %t, got %v", expectedPrivileged, secCtx.Privileged)
+		}
+		
+		if secCtx.ReadOnlyRootFilesystem == nil || *secCtx.ReadOnlyRootFilesystem != expectedReadonly {
+			t.Errorf("Expected ReadOnlyRootFilesystem %t, got %v", expectedReadonly, secCtx.ReadOnlyRootFilesystem)
+		}
+	})
+	
+	t.Run("Pod spec", func(t *testing.T) {
+		podSpec := daemonset.Spec.Template.Spec
+		expectedGracePeriod := int64(1)
+		expectedFSGroup := int64(1000)
+		
+		if podSpec.TerminationGracePeriodSeconds == nil || *podSpec.TerminationGracePeriodSeconds != expectedGracePeriod {
+			t.Errorf("Expected TerminationGracePeriodSeconds %d, got %v", expectedGracePeriod, podSpec.TerminationGracePeriodSeconds)
+		}
+		
+		if len(podSpec.Tolerations) != 1 || podSpec.Tolerations[0].Operator != "Exists" {
+			t.Errorf("Expected one toleration with operator 'Exists', got %v", podSpec.Tolerations)
+		}
+		
+		if podSpec.SecurityContext.FSGroup == nil || *podSpec.SecurityContext.FSGroup != expectedFSGroup {
+			t.Errorf("Expected FSGroup %d, got %v", expectedFSGroup, podSpec.SecurityContext.FSGroup)
+		}
+	})
+}
+
+func TestCreatePingCommand(t *testing.T) {
+	tests := []struct {
+		name     string
+		targetIP string
+		expected []string
+	}{
+		{
+			name:     "Valid IPv4 address",
+			targetIP: "10.244.0.1",
+			expected: []string{"sh", "-c", "ping -c 2 10.244.0.1 > /dev/null 2>&1"},
+		},
+		{
+			name:     "Valid IPv6 address",
+			targetIP: "2001:db8::1",
+			expected: []string{"sh", "-c", "ping -c 2 2001:db8::1 > /dev/null 2>&1"},
+		},
+		{
+			name:     "Localhost",
+			targetIP: "127.0.0.1",
+			expected: []string{"sh", "-c", "ping -c 2 127.0.0.1 > /dev/null 2>&1"},
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := createPingCommand(tt.targetIP)
+			
+			if len(result) != len(tt.expected) {
+				t.Errorf("Expected command length %d, got %d", len(tt.expected), len(result))
+				return
+			}
+			
+			for i, part := range result {
+				if part != tt.expected[i] {
+					t.Errorf("Expected command part %d to be %s, got %s", i, tt.expected[i], part)
+				}
+			}
+		})
+	}
+}
+
+func TestValidatePodIP(t *testing.T) {
+	tests := []struct {
+		name     string
+		podIP    string
+		expected bool
+	}{
+		{
+			name:     "Valid IPv4 address",
+			podIP:    "10.244.0.1",
+			expected: true,
+		},
+		{
+			name:     "Valid IPv6 address",
+			podIP:    "2001:db8::1",
+			expected: true,
+		},
+		{
+			name:     "Localhost IPv4",
+			podIP:    "127.0.0.1",
+			expected: true,
+		},
+		{
+			name:     "Localhost IPv6",
+			podIP:    "::1",
+			expected: true,
+		},
+		{
+			name:     "Empty string",
+			podIP:    "",
+			expected: false,
+		},
+		{
+			name:     "Invalid IP format",
+			podIP:    "invalid-ip",
+			expected: false,
+		},
+		{
+			name:     "Invalid IPv4 format",
+			podIP:    "256.1.1.1",
+			expected: false,
+		},
+		{
+			name:     "Partial IPv4",
+			podIP:    "10.244.0",
+			expected: false,
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := validatePodIP(tt.podIP)
+			if result != tt.expected {
+				t.Errorf("Expected %t for IP %s, got %t", tt.expected, tt.podIP, result)
+			}
+		})
+	}
+}
