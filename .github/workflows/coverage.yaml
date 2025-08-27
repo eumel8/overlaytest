@@ -1,6 +1,5 @@
 name: "Go Coverage"
 on:
-  pull_request:
   push:
     branches:
       # It's important that the action also runs on merge to main
