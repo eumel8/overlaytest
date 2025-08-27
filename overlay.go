@@ -29,55 +29,23 @@ import (
 
 const appversion = "1.0.6"
 
-func main() {
-	// install namespace and app name
-	var kubeconfig *string
-	namespace := "kube-system"
-	app := "overlaytest"
+func getKubeconfigPath() string {
+	if os.Getenv("KUBECONFIG") != "" {
+		return os.Getenv("KUBECONFIG")
+	} else if home := homedir.HomeDir(); home != "" {
+		return filepath.Join(home, ".kube", "config")
+	} else {
+		return ""
+	}
+}
+
+func createDaemonSetSpec(namespace, app, image string) *apps.DaemonSet {
 	var graceperiod = int64(1)
 	var user = int64(1000)
 	var privledged = bool(true)
 	var readonly = bool(true)
-	image := "mtr.devops.telekom.de/mcsps/swiss-army-knife:latest"
 
-	// load kube-config file
-	if os.Getenv("KUBECONFIG") != "" {
-		kubeconfig = flag.String("kubeconfig", os.Getenv("KUBECONFIG"), "environment variable of KUBECONFIG")
-	} else if home := homedir.HomeDir(); home != "" {
-		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	} else {
-		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
-	}
-	version := flag.Bool("version", false, "app version")
-	reuse := flag.Bool("reuse", false, "reuse existing deployment")
-
-	flag.Parse()
-
-	// print app version and exit
-	if *version {
-		fmt.Println("version", appversion)
-		os.Exit(0)
-	}
-
-	// use the current context in kubeconfig
-	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err.Error())
-	}
-
-	// how this will work with env var?
-	// *argKubecfgFile = os.Getenv("KUBECONFIG")
-
-	// prepare the DaemonSet resource
-	daemonsetsClient := clientset.AppsV1().DaemonSets(namespace)
-	fmt.Println("Welcome to the overlaytest.\n\n")
-
-	daemonset := &apps.DaemonSet{
+	return &apps.DaemonSet{
 		ObjectMeta: meta.ObjectMeta{
 			Name: app,
 		},
@@ -121,6 +89,60 @@ func main() {
 			},
 		},
 	}
+}
+
+func createPingCommand(targetIP string) []string {
+	return []string{
+		"sh",
+		"-c",
+		"ping -c 2 " + targetIP + " > /dev/null 2>&1",
+	}
+}
+
+func validatePodIP(podIP string) bool {
+	return net.ParseIP(podIP) != nil
+}
+
+func main() {
+	// install namespace and app name
+	var kubeconfig *string
+	namespace := "kube-system"
+	app := "overlaytest"
+	image := "mtr.devops.telekom.de/mcsps/swiss-army-knife:latest"
+
+	// load kube-config file
+	defaultPath := getKubeconfigPath()
+	kubeconfig = flag.String("kubeconfig", defaultPath, "(optional) absolute path to the kubeconfig file")
+	version := flag.Bool("version", false, "app version")
+	reuse := flag.Bool("reuse", false, "reuse existing deployment")
+
+	flag.Parse()
+
+	// print app version and exit
+	if *version {
+		fmt.Println("version", appversion)
+		os.Exit(0)
+	}
+
+	// use the current context in kubeconfig
+	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// how this will work with env var?
+	// *argKubecfgFile = os.Getenv("KUBECONFIG")
+
+	// prepare the DaemonSet resource
+	daemonsetsClient := clientset.AppsV1().DaemonSets(namespace)
+	fmt.Printf("Welcome to the overlaytest.\n\n")
+
+	daemonset := createDaemonSetSpec(namespace, app, image)
 
 	if *reuse != true {
 		// create DaemonSet, delete it if exists
@@ -144,11 +166,11 @@ func main() {
 		for {
 			obj, err := clientset.AppsV1().DaemonSets(namespace).Get(context.TODO(), "overlaytest", meta.GetOptions{})
 			if err != nil {
-				fmt.Println("Error getting daemonset: %v", err)
+				fmt.Printf("Error getting daemonset: %v", err)
 				panic(err.Error())
 			}
 			if obj.Status.NumberReady != 0 {
-				fmt.Println("all pods ready")
+				fmt.Printf("all pods ready\n")
 				break
 			}
 			time.Sleep(2 * time.Second)
@@ -163,7 +185,7 @@ func main() {
 	fmt.Printf("There are %d nodes in the cluster\n", len(pods.Items))
 
 	// wait here again if all PODs become an ip-address
-	fmt.Println("checking pod network...")
+	fmt.Printf("checking pod network...\n")
 	for _, pod := range pods.Items {
 		for {
 			podi, err := clientset.CoreV1().Pods(namespace).Get(context.TODO(), pod.ObjectMeta.Name, meta.GetOptions{})
@@ -172,17 +194,17 @@ func main() {
 				panic(err.Error())
 			}
 
-			if net.ParseIP(podi.Status.PodIP) != nil {
+			if validatePodIP(podi.Status.PodIP) {
 				fmt.Println(podi.ObjectMeta.Name, "ready", podi.Status.PodIP)
 				// fmt.Println(podi.ObjectMeta.Name, "ready")
 				break
 			}
 		}
 	}
-	fmt.Println("all pods have network\n")
+	fmt.Printf("all pods have network\n")
 
 	// loop the pod list for each node for the network test
-	fmt.Println("=> Start network overlay test\n")
+	fmt.Printf("\n=> Start network overlay test\n")
 	// refresh pod object list
 	pods, err = clientset.CoreV1().Pods(namespace).List(context.TODO(), meta.ListOptions{LabelSelector: "app=overlaytest"})
 	for _, upod := range pods.Items {
@@ -190,11 +212,7 @@ func main() {
 			// fmt.Println("Podname: ", pod.ObjectMeta.Name)
 			// fmt.Println("PodIP: ", pod.Status.PodIP)
 			// fmt.Println("Nodename: ", pod.Spec.NodeName)
-			cmd := []string{
-				"sh",
-				"-c",
-				"ping -c 2 " + upod.Status.PodIP + " > /dev/null 2>&1",
-			}
+			cmd := createPingCommand(upod.Status.PodIP)
 			req := clientset.CoreV1().RESTClient().Post().Resource("pods").Name(pod.ObjectMeta.Name).Namespace(namespace).SubResource("exec").VersionedParams(&core.PodExecOptions{
 				Command: cmd,
 				Stdin:   true,
@@ -204,7 +222,7 @@ func main() {
 
 			exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
 			if err != nil {
-				fmt.Println("error while creating Executor: %v", err)
+				fmt.Printf("error while creating Executor: %v\n", err)
 			}
 
 			err = exec.Stream(remotecommand.StreamOptions{
@@ -214,13 +232,13 @@ func main() {
 				Tty:    false,
 			})
 			if err != nil {
-				fmt.Println(upod.Spec.NodeName, " can NOT reach ", pod.Spec.NodeName)
+				fmt.Printf("%s can NOT reach %s\n", upod.Spec.NodeName, pod.Spec.NodeName)
 			} else {
-				fmt.Println(upod.Spec.NodeName, " can reach ", pod.Spec.NodeName)
+				fmt.Printf("%s can reach %s\n", upod.Spec.NodeName, pod.Spec.NodeName)
 			}
 
 		}
 	}
-	fmt.Println("=> End network overlay test\n")
-	fmt.Println("Call me again to remove installed cluster resources\n")
+	fmt.Printf("=> End network overlay test\n")
+	fmt.Printf("\nCall me again to remove installed cluster resources\n")
 }

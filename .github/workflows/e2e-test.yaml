@@ -1,0 +1,110 @@
+name: End-to-End Tests with Kind
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  e2e-test:
+    name: E2E Tests with Kind
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        kubernetes-version: ['v1.30.0', 'v1.31.0', 'v1.32.0']
+        node-count: [2, 3]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Install Kind
+      run: |
+        curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64
+        chmod +x ./kind
+        sudo mv ./kind /usr/local/bin/kind
+
+    - name: Create Kind cluster
+      run: |
+        cat <<EOF > kind-config.yaml
+        kind: Cluster
+        apiVersion: kind.x-k8s.io/v1alpha4
+        nodes:
+        - role: control-plane
+          kubeadmConfigPatches:
+          - |
+            kind: InitConfiguration
+            nodeRegistration:
+              kubeletExtraArgs:
+                node-labels: "ingress-ready=true"
+        $(for i in $(seq 1 ${{ matrix.node-count }}); do echo "- role: worker"; done)
+        networking:
+          disableDefaultCNI: false
+          kubeProxyMode: "iptables"
+        EOF
+        
+        kind create cluster --config kind-config.yaml --image kindest/node:${{ matrix.kubernetes-version }} --wait 300s
+
+    - name: Wait for cluster ready
+      run: |
+        kubectl wait --for=condition=Ready nodes --all --timeout=300s
+        kubectl get nodes -o wide
+
+    - name: Build overlaytest binary
+      run: |
+        go mod tidy
+        go build -o overlaytest .
+
+    - name: Run overlaytest
+      run: |
+        # First run to create the daemonset
+        timeout 300s ./overlaytest || true
+        
+        # Wait a bit for pods to be ready
+        sleep 30
+        
+        # Second run to actually test (reuse existing deployment)
+        ./overlaytest -reuse
+
+    - name: Verify cluster state
+      if: always()
+      run: |
+        echo "=== Cluster Info ==="
+        kubectl cluster-info
+        
+        echo "=== Nodes ==="
+        kubectl get nodes -o wide
+        
+        echo "=== DaemonSet Status ==="
+        kubectl get daemonset overlaytest -n kube-system || true
+        
+        echo "=== Pod Status ==="
+        kubectl get pods -n kube-system -l app=overlaytest -o wide || true
+        
+        echo "=== Pod Logs ==="
+        kubectl logs -n kube-system -l app=overlaytest --tail=50 || true
+        
+        echo "=== Events ==="
+        kubectl get events -n kube-system --sort-by=.metadata.creationTimestamp || true
+
+    - name: Cleanup Kind cluster
+      if: always()
+      run: |
+        kind delete cluster
