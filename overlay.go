@@ -239,6 +239,6 @@ func main() {
 
 		}
 	}
-	fmt.Printf("\n=> End network overlay test\n")
-	fmt.Printf("Call me again to remove installed cluster resources\n")
+	fmt.Printf("=> End network overlay test\n")
+	fmt.Printf("\nCall me again to remove installed cluster resources\n")
 }
