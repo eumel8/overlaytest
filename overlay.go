@@ -204,7 +204,7 @@ func main() {
 	fmt.Printf("all pods have network\n")
 
 	// loop the pod list for each node for the network test
-	fmt.Printf("=> Start network overlay test\n")
+	fmt.Printf("\n=> Start network overlay test\n")
 	// refresh pod object list
 	pods, err = clientset.CoreV1().Pods(namespace).List(context.TODO(), meta.ListOptions{LabelSelector: "app=overlaytest"})
 	for _, upod := range pods.Items {
@@ -232,13 +232,13 @@ func main() {
 				Tty:    false,
 			})
 			if err != nil {
-				fmt.Printf(upod.Spec.NodeName, " can NOT reach ", pod.Spec.NodeName,"\n")
+				fmt.Printf("%s can NOT reach %s\n", upod.Spec.NodeName, pod.Spec.NodeName)
 			} else {
-				fmt.Printf(upod.Spec.NodeName, " can reach ", pod.Spec.NodeName,"\n")
+				fmt.Printf("%s can reach %s\n", upod.Spec.NodeName, pod.Spec.NodeName)
 			}
 
 		}
 	}
-	fmt.Printf("=> End network overlay test\n")
+	fmt.Printf("\n=> End network overlay test\n")
 	fmt.Printf("Call me again to remove installed cluster resources\n")
 }
