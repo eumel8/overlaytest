@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        kubernetes-version: ['v1.30.0', 'v1.31.0', 'v1.32.0']
+        kubernetes-version: ['v1.30.0', 'v1.31.0', 'v1.32.0', 'v1.33.0', 'v1.34.0', 'v1.35.0']
         node-count: [2, 3]
     
     steps:
@@ -23,7 +23,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v6
       with:
-        go-version: '1.24'
+        go-version: '1.25'
 
     - name: Cache Go modules
       uses: actions/cache@v4
