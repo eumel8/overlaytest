@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        kubernetes-version: ['v1.30.0', 'v1.31.0', 'v1.32.0']
+        kubernetes-version: ['v1.30.0', 'v1.31.0', 'v1.32.0', 'v1.33.0', 'v1.34.0', 'v1.35.0']
         node-count: [2, 3]
     
     steps:
