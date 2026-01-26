@@ -1,4 +1,6 @@
 # https://github.com/marketplace/actions/go-release-binaries
+
+name: Release
 on:
   release:
     types: [created]
@@ -27,3 +29,5 @@ jobs:
         sha256sum: true
         overwrite: true
         pre_command: go mod tidy
+        project_path: ./cmd/overlaytest
+        ldflags: -s -w -X github.com/eumel8/overlaytest/pkg/overlaytest.Version=${{ github.ref_name }}
