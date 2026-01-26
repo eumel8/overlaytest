@@ -83,7 +83,7 @@ func CreateDaemonSetSpec(namespace, app, image string) *apps.DaemonSet {
 }
 
 // CreateOrReuseDaemonSet creates a new DaemonSet or exits if it exists (when not reusing)
-func CreateOrReuseDaemonSet(ctx context.Context, clientset *kubernetes.Clientset, config *Config, reuse bool) error {
+func CreateOrReuseDaemonSet(ctx context.Context, clientset kubernetes.Interface, config *Config, reuse bool) error {
 	daemonsetsClient := clientset.AppsV1().DaemonSets(config.Namespace)
 	daemonset := CreateDaemonSetSpec(config.Namespace, config.AppName, config.Image)
 
@@ -108,7 +108,7 @@ func CreateOrReuseDaemonSet(ctx context.Context, clientset *kubernetes.Clientset
 }
 
 // WaitForDaemonSetReady waits for all DaemonSet pods to be ready
-func WaitForDaemonSetReady(ctx context.Context, clientset *kubernetes.Clientset, namespace, name string) error {
+func WaitForDaemonSetReady(ctx context.Context, clientset kubernetes.Interface, namespace, name string) error {
 	for {
 		obj, err := clientset.AppsV1().DaemonSets(namespace).Get(ctx, name, meta.GetOptions{})
 		if err != nil {
@@ -124,7 +124,7 @@ func WaitForDaemonSetReady(ctx context.Context, clientset *kubernetes.Clientset,
 }
 
 // GetOverlayTestPods returns all pods with the overlaytest label
-func GetOverlayTestPods(ctx context.Context, clientset *kubernetes.Clientset, namespace string) (*core.PodList, error) {
+func GetOverlayTestPods(ctx context.Context, clientset kubernetes.Interface, namespace string) (*core.PodList, error) {
 	pods, err := clientset.CoreV1().Pods(namespace).List(ctx, meta.ListOptions{LabelSelector: "app=overlaytest"})
 	if err != nil {
 		return nil, err
@@ -133,7 +133,7 @@ func GetOverlayTestPods(ctx context.Context, clientset *kubernetes.Clientset, na
 }
 
 // WaitForPodNetwork waits for all pods to have valid IP addresses
-func WaitForPodNetwork(ctx context.Context, clientset *kubernetes.Clientset, namespace string, pods []core.Pod) error {
+func WaitForPodNetwork(ctx context.Context, clientset kubernetes.Interface, namespace string, pods []core.Pod) error {
 	fmt.Printf("checking pod network...\n")
 	for _, pod := range pods {
 		for {

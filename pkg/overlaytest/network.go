@@ -29,7 +29,7 @@ func ValidatePodIP(podIP string) bool {
 }
 
 // RunNetworkTest executes network overlay tests between all pods
-func RunNetworkTest(ctx context.Context, clientset *kubernetes.Clientset, config *rest.Config, namespace string) error {
+func RunNetworkTest(ctx context.Context, clientset kubernetes.Interface, config *rest.Config, namespace string) error {
 	// Refresh pod object list
 	pods, err := clientset.CoreV1().Pods(namespace).List(ctx, meta.ListOptions{LabelSelector: "app=overlaytest"})
 	if err != nil {

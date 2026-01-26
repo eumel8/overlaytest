@@ -4,9 +4,13 @@ on:
     branches:
       # It's important that the action also runs on merge to main
       - main
+      - unittests
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
     name: Update coverage badge
     steps:
       - name: Checkout

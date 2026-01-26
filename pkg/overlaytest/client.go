@@ -7,7 +7,7 @@ import (
 )
 
 // NewKubernetesClient creates a new Kubernetes clientset
-func NewKubernetesClient(kubeconfig string) (*kubernetes.Clientset, *rest.Config, error) {
+func NewKubernetesClient(kubeconfig string) (kubernetes.Interface, *rest.Config, error) {
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		return nil, nil, err
