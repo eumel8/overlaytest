@@ -23,7 +23,7 @@ func DefaultConfig() *Config {
 		AppName:   "overlaytest",
 		// Default image: minimal Alpine-based image with bash and ping (~10MB compressed)
 		// Previous image (deprecated): mtr.devops.telekom.de/mcsps/swiss-army-knife:latest
-		Image: "ghcr.io/eumel8/overlaytest:main",
+		Image: "ghcr.io/eumel8/overlaytest:latest",
 	}
 }
 
