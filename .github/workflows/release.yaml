@@ -2,7 +2,6 @@
 
 name: Release
 on:
-  push:
   release:
     types: [created]
 
@@ -19,9 +18,6 @@ jobs:
             goos: windows
     steps:
     - uses: actions/checkout@v6
-    - name: debug
-      run: |
-        ls -la
     - uses: wangyoucao577/go-release-action@v1.55
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
