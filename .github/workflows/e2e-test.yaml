@@ -70,7 +70,7 @@ jobs:
     - name: Build overlaytest binary
       run: |
         go mod tidy
-        go build -o overlaytest .
+        go build -ldflags "-X github.com/eumel8/overlaytest/pkg/overlaytest.Version=e2e-test" -o overlaytest ./cmd/overlaytest
 
     - name: Run overlaytest
       run: |

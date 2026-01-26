@@ -1,4 +1,4 @@
-module overlay.go
+module github.com/eumel8/overlaytest
 
 go 1.25.0
 
